@@ -1,12 +1,22 @@
 #!/bin/bash
-
-# Read the lambda name from the environment variable
-if [[ -z "${LAMBDA_NAME}" ]]; then
-  read -p "Enter the name of the Lambda function: " LAMBDA_NAME
+# Author: Kanishka
+# Read the list of Lambda names from the environment variable
+if [[ -z "${LAMBDA_NAMES}" ]]; then
+  echo "Please define the LAMBDA_NAMES environment variable with a comma-separated list of Lambda function names."
+  exit 1
 fi
+lambda_names=($(echo "${LAMBDA_NAMES}" | tr ',' ' '))
 
-# List all log groups for the given lambda
-log_groups=($(aws logs describe-log-groups --region ap-southeast-2 --log-group-name-prefix "/aws/lambda/${LAMBDA_NAME}" --query "logGroups[*].logGroupName" --output text))
+# Prompt the user to select a Lambda function to follow
+echo "Select a Lambda function to follow:"
+select lambda_name in "${lambda_names[@]}"; do
+  if [[ -n "${lambda_name}" ]]; then
+    break
+  fi
+done
+
+# List all log groups for the selected Lambda function
+log_groups=($(aws logs describe-log-groups --region ap-southeast-2 --log-group-name-prefix "/aws/lambda/${lambda_name}" --query "logGroups[*].logGroupName" --output text))
 
 # Find the log group with the most recent update time
 most_recent_log_group=""
@@ -25,4 +35,3 @@ echo "The log group with the most recent update time is: ${most_recent_log_group
 # Start tailing the selected log group
 echo "Tailing log group: ${most_recent_log_group} ..."
 aws logs tail --region ap-southeast-2 --follow "${most_recent_log_group}"
-
